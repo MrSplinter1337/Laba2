@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Записи на стрижку</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 20px;
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+        }
+        form {
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 5px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+        input, select, button {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+        button {
+            background-color: #28a745;
+            color: white;
+            border: none;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+        button:hover {
+            background-color: #218838;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            background-color: #fff;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+        th, td {
+            padding: 10px;
+            text-align: left;
+            border-bottom: 1px solid #ccc;
+        }
+        th {
+            background-color: #f7f7f7;
+        }
+        tr:hover {
+            background-color: #f1f1f1;
+        }
+    </style>
+</head>
+<body>
+    <h1>Записи на стрижку</h1>
+
+    <form id="recordForm">
+        <input type="text" id="firstName" placeholder="Имя" required>
+        <input type="text" id="lastName" placeholder="Фамилия" required>
+        <select id="master" required>
+            <option value="" disabled selected>Выберите мастера</option>
+            <option value="Иванов">Иванов</option>
+            <option value="Петров">Петров</option>
+            <option value="Смирнова">Смирнова</option>
+            <option value="Федорова">Федорова</option>
+        </select>
+        <select id="haircut" required>
+            <option value="" disabled selected>Выберите стрижку</option>
+        </select>
+        <input type="date" id="date" required>
+        <button type="submit">Добавить</button>
+        <input type="hidden" id="recordId">
+    </form>
+
+    <div>
+        <h2>Фильтры и сортировка</h2>
+        <select id="sortField">
+            <option value="" disabled selected>Сортировать по</option>
+            <option value="first_name">Имя</option>
+            <option value="last_name">Фамилия</option>
+            <option value="master">Мастер</option>
+            <option value="date">Дата</option>
+            <option value="price">Цена</option>
+        </select>
+        <select id="sortOrder">
+            <option value="asc">По возрастанию</option>
+            <option value="desc">По убыванию</option>
+        </select>
+        <button id="sortButton">Применить сортировку</button>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Имя</th>
+                <th>Фамилия</th>
+                <th>Мастер</th>
+                <th>Стрижка</th>
+                <th>Дата</th>
+                <th>Цена</th>
+                <th>Действия</th>
+            </tr>
+        </thead>
+        <tbody id="recordTable">
+        </tbody>
+    </table>
+
+    <script>
+        const haircuts = {
+            'male': [
+                {'name': 'Классическая мужская стрижка', 'price': 200.0},
+                {'name': 'Фейд', 'price': 250.0},
+                {'name': 'Базз кат', 'price': 150.0},
+                {'name': 'Помпадур', 'price': 300.0},
+                {'name': 'Топ кнот', 'price': 350.0}
+            ],
+            'female': [
+                {'name': 'Каре', 'price': 400.0},
+                {'name': 'Боб', 'price': 450.0},
+                {'name': 'Пикси', 'price': 350.0},
+                {'name': 'Шэг', 'price': 500.0},
+                {'name': 'Французская стрижка', 'price': 550.0}
+            ]
+        };
+
+        $(document).ready(function() {
+            $('#master').on('change', function() {
+                $('#haircut').empty().append('<option value="" disabled selected>Выберите стрижку</option>');
+                const selectedMaster = $(this).val();
+                const isMale = selectedMaster === 'Иванов' || selectedMaster === 'Петров';
+                const selectedHaircuts = isMale ? haircuts['male'] : haircuts['female'];
+
+                selectedHaircuts.forEach(haircut => {
+                    $('#haircut').append(`<option value="${haircut.name}">${haircut.name} - ${haircut.price} руб.</option>`);
+                });
+            });
+
+            $('#recordForm').on('submit', function(event) {
+                event.preventDefault();
+
+                const id = $('#recordId').val();
+                const url = id ? `/records/${id}` : '/records';
+                const type = id ? 'PUT' : 'POST';
+                const data = {
+                    first_name: $('#firstName').val(),
+                    last_name: $('#lastName').val(),
+                    master: $('#master').val(),
+                    haircut: $('#haircut').val(),
+                    date: $('#date').val()
+                };
+
+                $.ajax({
+                    type: type,
+                    url: url,
+                    data: JSON.stringify(data),
+                    contentType: 'application/json',
+                    success: function(record) {
+                        if (id) {
+                            // Обновляем запись в таблице
+                            const row = $(`#record-${id}`);
+                            row.find('td:nth-child(1)').text(record.first_name);
+                            row.find('td:nth-child(2)').text(record.last_name);
+                            row.find('td:nth-child(3)').text(record.master);
+                            row.find('td:nth-child(4)').text(record.haircut);
+                            row.find('td:nth-child(5)').text(record.date);
+                            row.find('td:nth-child(6)').text(record.price);
+                        } else {
+                            // Добавляем новую запись в таблицу
+                            $('#recordTable').append(`
+                                <tr id="record-${record.id}">
+                                    <td>${record.first_name}</td>
+                                    <td>${record.last_name}</td>
+                                    <td>${record.master}</td>
+                                    <td>${record.haircut}</td>
+                                    <td>${record.date}</td>
+                                    <td>${record.price}</td>
+                                    <td>
+                                        <button onclick="editRecord(${record.id})">Изменить</button>
+                                        <button onclick="deleteRecord(${record.id})">Удалить</button>
+                                    </td>
+                                </tr>
+                            `);
+                        }
+                        $('#recordForm')[0].reset();
+                        $('#recordId').val('');
+                        $('button[type="submit"]').text('Добавить');
+                    },
+                    error: function(xhr) {
+                        alert(xhr.responseJSON.error);
+                    }
+                });
+            });
+
+            $('#sortButton').on('click', function() {
+                const field = $('#sortField').val();
+                const order = $('#sortOrder').val();
+
+                if (field) {
+                    $.get(`/records/sort?field=${field}&order=${order}`, function(sortedRecords) {
+                        $('#recordTable').empty();
+                        sortedRecords.forEach(record => {
+                            $('#recordTable').append(`
+                                <tr id="record-${record.id}">
+                                    <td>${record.first_name}</td>
+                                    <td>${record.last_name}</td>
+                                    <td>${record.master}</td>
+                                    <td>${record.haircut}</td>
+                                    <td>${record.date}</td>
+                                    <td>${record.price}</td>
+                                    <td>
+                                        <button onclick="editRecord(${record.id})">Изменить</button>
+                                        <button onclick="deleteRecord(${record.id})">Удалить</button>
+                                    </td>
+                                </tr>
+                            `);
+                        });
+                    });
+                }
+            });
+        });
+
+        function editRecord(id) {
+            $.get(`/records/${id}`, function(record) {
+                $('#firstName').val(record.first_name);
+                $('#lastName').val(record.last_name);
+                $('#master').val(record.master).change();  // Вызываем событие change, чтобы обновить список стрижек
+                $('#haircut').val(record.haircut);
+                $('#date').val(record.date);
+                $('#recordId').val(record.id);
+                $('button[type="submit"]').text('Изменить');
+            });
+        }
+
+        function deleteRecord(id) {
+            $.ajax({
+                type: 'DELETE',
+                url: `/records/${id}`,
+                success: function() {
+                    $(`#record-${id}`).remove();
+                },
+                error: function(xhr) {
+                    alert(xhr.responseJSON.error);
+                }
+            });
+        }
+    </script>
+</body>
+</html>
