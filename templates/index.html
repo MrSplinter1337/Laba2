@@ -15,22 +15,25 @@
         h1 {
             text-align: center;
             color: #333;
+            margin-bottom: 20px;
         }
         form {
             background-color: #fff;
-            padding: 20px;
+            padding: 15px;
             border-radius: 5px;
             box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
             margin-bottom: 20px;
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
         }
         input, select, button {
-            width: 100%;
             padding: 10px;
-            margin: 10px 0;
             border: 1px solid #ccc;
             border-radius: 5px;
         }
         button {
+            grid-column: 1 / 3;
             background-color: #28a745;
             color: white;
             border: none;
@@ -39,6 +42,10 @@
         }
         button:hover {
             background-color: #218838;
+        }
+        input[type="date"] {
+            width: 100%;
+            max-width: 160px;
         }
         table {
             width: 100%;
@@ -58,6 +65,9 @@
         tr:hover {
             background-color: #f1f1f1;
         }
+        .action-buttons button {
+            margin-right: 5px;
+        }
     </style>
 </head>
 <body>
@@ -68,10 +78,6 @@
         <input type="text" id="lastName" placeholder="Фамилия" required>
         <select id="master" required>
             <option value="" disabled selected>Выберите мастера</option>
-            <option value="Иванов">Иванов</option>
-            <option value="Петров">Петров</option>
-            <option value="Смирнова">Смирнова</option>
-            <option value="Федорова">Федорова</option>
         </select>
         <select id="haircut" required>
             <option value="" disabled selected>Выберите стрижку</option>
@@ -81,32 +87,15 @@
         <input type="hidden" id="recordId">
     </form>
 
-    <div>
-        <h2>Фильтры и сортировка</h2>
-        <select id="sortField">
-            <option value="" disabled selected>Сортировать по</option>
-            <option value="first_name">Имя</option>
-            <option value="last_name">Фамилия</option>
-            <option value="master">Мастер</option>
-            <option value="date">Дата</option>
-            <option value="price">Цена</option>
-        </select>
-        <select id="sortOrder">
-            <option value="asc">По возрастанию</option>
-            <option value="desc">По убыванию</option>
-        </select>
-        <button id="sortButton">Применить сортировку</button>
-    </div>
-
     <table>
         <thead>
             <tr>
-                <th>Имя</th>
-                <th>Фамилия</th>
-                <th>Мастер</th>
+                <th><button id="sortFirstName">Имя</button></th>
+                <th><button id="sortLastName">Фамилия</button></th>
+                <th><button id="sortMaster">Мастер</button></th>
                 <th>Стрижка</th>
-                <th>Дата</th>
-                <th>Цена</th>
+                <th><button id="sortDate">Дата</button></th>
+                <th><button id="sortPrice">Цена</button></th>
                 <th>Действия</th>
             </tr>
         </thead>
@@ -115,32 +104,24 @@
     </table>
 
     <script>
-        const haircuts = {
-            'male': [
-                {'name': 'Классическая мужская стрижка', 'price': 200.0},
-                {'name': 'Фейд', 'price': 250.0},
-                {'name': 'Базз кат', 'price': 150.0},
-                {'name': 'Помпадур', 'price': 300.0},
-                {'name': 'Топ кнот', 'price': 350.0}
-            ],
-            'female': [
-                {'name': 'Каре', 'price': 400.0},
-                {'name': 'Боб', 'price': 450.0},
-                {'name': 'Пикси', 'price': 350.0},
-                {'name': 'Шэг', 'price': 500.0},
-                {'name': 'Французская стрижка', 'price': 550.0}
-            ]
-        };
-
         $(document).ready(function() {
+            $.get('/data', function(data) {
+                data.masters.male.forEach(function(master) {
+                    $('#master').append(`<option value="${master}">${master}</option>`);
+                });
+                data.masters.female.forEach(function(master) {
+                    $('#master').append(`<option value="${master}">${master}</option>`);
+                });
+            });
+
             $('#master').on('change', function() {
                 $('#haircut').empty().append('<option value="" disabled selected>Выберите стрижку</option>');
                 const selectedMaster = $(this).val();
-                const isMale = selectedMaster === 'Иванов' || selectedMaster === 'Петров';
-                const selectedHaircuts = isMale ? haircuts['male'] : haircuts['female'];
-
-                selectedHaircuts.forEach(haircut => {
-                    $('#haircut').append(`<option value="${haircut.name}">${haircut.name} - ${haircut.price} руб.</option>`);
+                $.get('/data', function(data) {
+                    const haircuts = selectedMaster === 'Иванов' || selectedMaster === 'Петров' ? data.haircuts.male : data.haircuts.female;
+                    haircuts.forEach(haircut => {
+                        $('#haircut').append(`<option value="${haircut.name}">${haircut.name} - ${haircut.price} руб.</option>`);
+                    });
                 });
             });
 
@@ -165,25 +146,23 @@
                     contentType: 'application/json',
                     success: function(record) {
                         if (id) {
-                            // Обновляем запись в таблице
                             const row = $(`#record-${id}`);
                             row.find('td:nth-child(1)').text(record.first_name);
                             row.find('td:nth-child(2)').text(record.last_name);
                             row.find('td:nth-child(3)').text(record.master);
                             row.find('td:nth-child(4)').text(record.haircut);
-                            row.find('td:nth-child(5)').text(record.date);
+                            row.find('td:nth-child(5)').text(formatDate(record.date));
                             row.find('td:nth-child(6)').text(record.price);
                         } else {
-                            // Добавляем новую запись в таблицу
                             $('#recordTable').append(`
                                 <tr id="record-${record.id}">
                                     <td>${record.first_name}</td>
                                     <td>${record.last_name}</td>
                                     <td>${record.master}</td>
                                     <td>${record.haircut}</td>
-                                    <td>${record.date}</td>
+                                    <td>${formatDate(record.date)}</td>
                                     <td>${record.price}</td>
-                                    <td>
+                                    <td class="action-buttons">
                                         <button onclick="editRecord(${record.id})">Изменить</button>
                                         <button onclick="deleteRecord(${record.id})">Удалить</button>
                                     </td>
@@ -200,58 +179,82 @@
                 });
             });
 
-            $('#sortButton').on('click', function() {
-                const field = $('#sortField').val();
-                const order = $('#sortOrder').val();
+            $('#sortFirstName').on('click', function() {
+                sortRecords('first_name');
+            });
 
-                if (field) {
-                    $.get(`/records/sort?field=${field}&order=${order}`, function(sortedRecords) {
-                        $('#recordTable').empty();
-                        sortedRecords.forEach(record => {
-                            $('#recordTable').append(`
-                                <tr id="record-${record.id}">
-                                    <td>${record.first_name}</td>
-                                    <td>${record.last_name}</td>
-                                    <td>${record.master}</td>
-                                    <td>${record.haircut}</td>
-                                    <td>${record.date}</td>
-                                    <td>${record.price}</td>
-                                    <td>
-                                        <button onclick="editRecord(${record.id})">Изменить</button>
-                                        <button onclick="deleteRecord(${record.id})">Удалить</button>
-                                    </td>
-                                </tr>
-                            `);
-                        });
+            $('#sortLastName').on('click', function() {
+                sortRecords('last_name');
+            });
+
+            $('#sortMaster').on('click', function() {
+                sortRecords('master');
+            });
+
+            $('#sortDate').on('click', function() {
+                sortRecords('date');
+            });
+
+            $('#sortPrice').on('click', function() {
+                sortRecords('price');
+            });
+
+            function sortRecords(field) {
+                $.get(`/records/sort?field=${field}`, function(sortedRecords) {
+                    $('#recordTable').empty();
+                    sortedRecords.forEach(record => {
+                        $('#recordTable').append(`
+                            <tr id="record-${record.id}">
+                                <td>${record.first_name}</td>
+                                <td>${record.last_name}</td>
+                                <td>${record.master}</td>
+                                <td>${record.haircut}</td>
+                                <td>${formatDate(record.date)}</td>
+                                <td>${record.price}</td>
+                                <td class="action-buttons">
+                                    <button onclick="editRecord(${record.id})">Изменить</button>
+                                    <button onclick="deleteRecord(${record.id})">Удалить</button>
+                                </td>
+                            </tr>
+                        `);
                     });
-                }
-            });
+                });
+            }
+
+            function formatDate(dateStr) {
+                const date = new Date(dateStr);
+                return date.toLocaleDateString('ru-RU', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
+                });
+            }
+
+            window.editRecord = function(id) {
+                $.get(`/records/${id}`, function(record) {
+                    $('#firstName').val(record.first_name);
+                    $('#lastName').val(record.last_name);
+                    $('#master').val(record.master).change();
+                    $('#haircut').val(record.haircut);
+                    $('#date').val(record.date);
+                    $('#recordId').val(record.id);
+                    $('button[type="submit"]').text('Изменить');
+                });
+            }
+
+            window.deleteRecord = function(id) {
+                $.ajax({
+                    type: 'DELETE',
+                    url: `/records/${id}`,
+                    success: function() {
+                        $(`#record-${id}`).remove();
+                    },
+                    error: function(xhr) {
+                        alert(xhr.responseJSON.error);
+                    }
+                });
+            }
         });
-
-        function editRecord(id) {
-            $.get(`/records/${id}`, function(record) {
-                $('#firstName').val(record.first_name);
-                $('#lastName').val(record.last_name);
-                $('#master').val(record.master).change();  // Вызываем событие change, чтобы обновить список стрижек
-                $('#haircut').val(record.haircut);
-                $('#date').val(record.date);
-                $('#recordId').val(record.id);
-                $('button[type="submit"]').text('Изменить');
-            });
-        }
-
-        function deleteRecord(id) {
-            $.ajax({
-                type: 'DELETE',
-                url: `/records/${id}`,
-                success: function() {
-                    $(`#record-${id}`).remove();
-                },
-                error: function(xhr) {
-                    alert(xhr.responseJSON.error);
-                }
-            });
-        }
     </script>
 </body>
 </html>

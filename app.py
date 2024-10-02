@@ -31,7 +31,16 @@ records = []
 
 @app.route('/')
 def index():
-    return render_template('index.html', records=records, masters=masters, haircuts=haircuts)
+    return render_template('index.html')  # Возвращаем HTML-страницу
+
+@app.route('/data')
+def get_data():
+    response_data = {
+        'message': 'Welcome to the haircut API',
+        'masters': masters,
+        'haircuts': haircuts
+    }
+    return jsonify(response_data), 200
 
 @app.route('/records', methods=['POST'])
 def manage_records():
@@ -41,11 +50,9 @@ def manage_records():
     haircut = request.json.get('haircut')
     date = request.json.get('date')
 
-    # Проверка, заполнены ли все обязательные поля
     if not client_name or not client_surname or not master or not haircut or not date:
         return jsonify({'error': 'Все поля должны быть заполнены.'}), 400
 
-    # Ищем цену для выбранной стрижки
     price = next((h['price'] for category in haircuts.values() for h in category if h['name'] == haircut), None)
 
     new_record = {
@@ -72,7 +79,6 @@ def update_record(record_id):
     updated_data = request.json
     for record in records:
         if record['id'] == record_id:
-            # Обновляем данные записи
             record['first_name'] = updated_data.get('first_name', record['first_name'])
             record['last_name'] = updated_data.get('last_name', record['last_name'])
             record['master'] = updated_data.get('master', record['master'])
@@ -91,7 +97,7 @@ def delete_record(record_id):
 @app.route('/records/sort', methods=['GET'])
 def sort_records():
     field = request.args.get('field')
-    order = request.args.get('order', 'asc')  # По умолчанию сортировка по возрастанию
+    order = request.args.get('order', 'asc')
 
     if field not in ['first_name', 'last_name', 'master', 'date', 'price']:
         return jsonify({'error': 'Недопустимое поле для сортировки'}), 400
