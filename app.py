@@ -29,6 +29,21 @@ haircuts = {
 # Список для хранения записей
 records = []
 
+# Упрощенная функция для расчета статистики по ценам
+def calculate_price_stats(records):
+    prices = [record['price'] for record in records]
+
+    # Проверяем, есть ли записи с ценами
+    if not prices:
+        return {'error': 'Нет записей для расчета статистики.'}
+
+    # Возвращаем среднее, минимальное и максимальное значение цен
+    return {
+        'average': sum(prices) / len(prices),
+        'max': max(prices),
+        'min': min(prices)
+    }
+
 @app.route('/')
 def index():
     return render_template('index.html')  # Возвращаем HTML-страницу
@@ -53,7 +68,8 @@ def manage_records():
     if not client_name or not client_surname or not master or not haircut or not date:
         return jsonify({'error': 'Все поля должны быть заполнены.'}), 400
 
-    price = next((h['price'] for category in haircuts.values() for h in category if h['name'] == haircut), None)
+    selected_haircut = next((h for category in haircuts.values() for h in category if h['name'] == haircut), None)
+    price = selected_haircut['price']
 
     new_record = {
         'id': len(records) + 1,
@@ -77,21 +93,21 @@ def get_record(record_id):
 @app.route('/records/<int:record_id>', methods=['PUT'])
 def update_record(record_id):
     updated_data = request.json
-    for record in records:
-        if record['id'] == record_id:
-            record['first_name'] = updated_data.get('first_name', record['first_name'])
-            record['last_name'] = updated_data.get('last_name', record['last_name'])
-            record['master'] = updated_data.get('master', record['master'])
-            record['haircut'] = updated_data.get('haircut', record['haircut'])
-            record['date'] = datetime.strptime(updated_data.get('date', record['date'].isoformat()), '%Y-%m-%d').date()
-            record['price'] = next((h['price'] for category in haircuts.values() for h in category if h['name'] == record['haircut']), None)
-            return jsonify(record), 200
+    for rec in records:
+        if rec['id'] == record_id:
+            rec['first_name'] = updated_data.get('first_name', rec['first_name'])
+            rec['last_name'] = updated_data.get('last_name', rec['last_name'])
+            rec['master'] = updated_data.get('master', rec['master'])
+            rec['haircut'] = updated_data.get('haircut', rec['haircut'])
+            rec['date'] = datetime.strptime(updated_data.get('date', rec['date'].isoformat()), '%Y-%m-%d').date()
+            rec['price'] = next((h['price'] for category in haircuts.values() for h in category if h['name'] == rec['haircut']), rec['price'])
+            return jsonify(rec), 200
     return jsonify({'message': 'Запись не найдена'}), 404
 
 @app.route('/records/<int:record_id>', methods=['DELETE'])
 def delete_record(record_id):
     global records
-    records = [record for record in records if record['id'] != record_id]
+    records = [rec for rec in records if rec['id'] != record_id]
     return jsonify({'message': 'Запись удалена'}), 204
 
 @app.route('/records/sort', methods=['GET'])
@@ -104,6 +120,12 @@ def sort_records():
 
     sorted_records = sorted(records, key=lambda x: x[field], reverse=(order == 'desc'))
     return jsonify(sorted_records)
+
+# Добавление маршрута для получения статистики по ценам
+@app.route('/records/stats', methods=['GET'])
+def get_price_stats():
+    stats = calculate_price_stats(records)
+    return jsonify(stats), 200 if 'error' not in stats else 400
 
 if __name__ == '__main__':
     app.run(debug=True)
