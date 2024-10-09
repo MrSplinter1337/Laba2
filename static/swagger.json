@@ -1,0 +1,69 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "description": "API для сервиса стрижек",
+    "version": "1.0.0",
+    "title": "Сервис стрижек"
+  },
+  "host": "localhost:5000",
+  "basePath": "/",
+  "schemes": ["http"],
+  "paths": {
+    "/records": {
+      "get": {
+        "summary": "Получить все записи",
+        "responses": {
+          "200": {
+            "description": "Список записей"
+          }
+        }
+      },
+      "post": {
+        "summary": "Добавить запись",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "description": "Данные новой записи",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/Record"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Запись добавлена"
+          }
+        }
+      }
+    }
+  },
+  "definitions": {
+    "Record": {
+      "type": "object",
+      "properties": {
+        "first_name": {
+          "type": "string"
+        },
+        "last_name": {
+          "type": "string"
+        },
+        "master": {
+          "type": "string"
+        },
+        "haircut": {
+          "type": "string"
+        },
+        "date": {
+          "type": "string",
+          "format": "date"
+        },
+        "price": {
+          "type": "number",
+          "format": "float"
+        }
+      }
+    }
+  }
+}

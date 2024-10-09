@@ -1,7 +1,10 @@
 from flask import Flask, jsonify, request, render_template
 from datetime import datetime
+from flask_swagger_ui import get_swaggerui_blueprint
+from flask_cors import CORS  # Импорт CORS
 
 app = Flask(__name__)
+CORS(app)
 
 # Данные мастеров и стрижек
 masters = {
@@ -26,18 +29,12 @@ haircuts = {
     ]
 }
 
-# Список для хранения записей
 records = []
 
-# Упрощенная функция для расчета статистики по ценам
 def calculate_price_stats(records):
     prices = [record['price'] for record in records]
-
-    # Проверяем, есть ли записи с ценами
     if not prices:
         return {'error': 'Нет записей для расчета статистики.'}
-
-    # Возвращаем среднее, минимальное и максимальное значение цен
     return {
         'average': sum(prices) / len(prices),
         'max': max(prices),
@@ -46,7 +43,7 @@ def calculate_price_stats(records):
 
 @app.route('/')
 def index():
-    return render_template('index.html')  # Возвращаем HTML-страницу
+    return render_template('index.html')
 
 @app.route('/data')
 def get_data():
@@ -57,6 +54,7 @@ def get_data():
     }
     return jsonify(response_data), 200
 
+# Маршрут для добавления записи
 @app.route('/records', methods=['POST'])
 def manage_records():
     client_name = request.json.get('first_name')
@@ -82,6 +80,11 @@ def manage_records():
     }
     records.append(new_record)
     return jsonify(new_record), 201
+
+# Новый маршрут для получения всех записей
+@app.route('/records', methods=['GET'])
+def get_all_records():
+    return jsonify(records), 200
 
 @app.route('/records/<int:record_id>', methods=['GET'])
 def get_record(record_id):
@@ -121,11 +124,24 @@ def sort_records():
     sorted_records = sorted(records, key=lambda x: x[field], reverse=(order == 'desc'))
     return jsonify(sorted_records)
 
-# Добавление маршрута для получения статистики по ценам
 @app.route('/records/stats', methods=['GET'])
 def get_price_stats():
     stats = calculate_price_stats(records)
     return jsonify(stats), 200 if 'error' not in stats else 400
+
+# Настройка Swagger UI
+SWAGGER_URL = '/api'  # URL для доступа к документации
+API_URL = '/static/swagger.json'  # Путь к файлу OpenAPI спецификации
+
+swaggerui_blueprint = get_swaggerui_blueprint(
+    SWAGGER_URL,
+    API_URL,
+    config={
+        'app_name': "Сервис стрижек"
+    }
+)
+
+app.register_blueprint(swaggerui_blueprint, url_prefix=SWAGGER_URL)
 
 if __name__ == '__main__':
     app.run(debug=True)
